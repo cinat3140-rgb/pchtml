@@ -84,7 +84,7 @@
     var notes = latest.notes ? "<span>" + esc(latest.notes) + "</span>" : "";
     var btn = latest.downloadUrl
       ? '<a class="btn btn-primary btn-sm" href="' + esc(latest.downloadUrl) + '" target="_blank" rel="noopener">Güncelle</a>'
-      : '<span class="dim" style="font-size:.82rem">Launcherda yeni sürüm bildirilecek.</span>';
+      : '<span class="dim" style="font-size:.82rem">İndirme bağlantısı yakında eklenecek.</span>';
     el.innerHTML =
       '<div class="update-banner-inner">' +
         '<span style="font-size:1.1rem">🆕</span>' +
