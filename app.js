@@ -1,12 +1,52 @@
 (function () {
   "use strict";
 
-  var state = { catalog: null, categoryId: null, error: null, search: "" };
+  var state = { catalog: null, categoryId: null, error: null, search: "", metricsUrl: null };
 
   var APP_VERSION = "1.0.0";
 
   function $(sel, root) { return (root || document).querySelector(sel); }
   function $$(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+
+  function metric(type, gameId) {
+    if (!state.metricsUrl || !gameId || isNaN(Number(gameId))) return;
+    fetch(state.metricsUrl.replace(/\/$/, "") + "/" + type, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ gameId: Number(gameId) })
+    }).catch(function () {});
+  }
+
+  function refreshStats() {
+    if (!state.metricsUrl || !state.catalog) return Promise.resolve();
+    var games = state.catalog.games || [];
+    var ids = games.map(function (g) { return g.id; }).filter(function (id) { return /^\d+$/.test(String(id)); });
+    if (!ids.length) return Promise.resolve();
+    return fetch(state.metricsUrl.replace(/\/$/, "") + "?ids=" + ids.join(","), { cache: "no-store" })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (map) {
+        if (!map) return;
+        games.forEach(function (g) {
+          var s = map[String(g.id)];
+          if (s) g.stats = { views: s.views, downloads: s.downloads };
+        });
+      })
+      .catch(function () {});
+  }
+
+  function applyTheme() {
+    var t = "dark";
+    try { t = localStorage.getItem("theme") || "dark"; } catch (e) {}
+    document.documentElement.setAttribute("data-theme", t);
+    var btn = $("#themeToggle");
+    if (btn) btn.textContent = t === "light" ? "🌙" : "☀️";
+  }
+
+  function toggleTheme() {
+    var t = document.documentElement.getAttribute("data-theme") === "light" ? "dark" : "light";
+    try { localStorage.setItem("theme", t); } catch (e) {}
+    applyTheme();
+  }
 
   function esc(s) {
     return String(s == null ? "" : s)
@@ -29,6 +69,13 @@
     return d.toLocaleDateString("tr-TR", { year: "numeric", month: "short", day: "numeric" });
   }
 
+  function fmtCount(n) {
+    if (n == null || isNaN(n)) return "0";
+    if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, "") + "M";
+    if (n >= 1000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "B";
+    return String(n);
+  }
+
   function img(url, cls, alt) {
     if (!url) return '<div class="placeholder">🎮</div>';
     return '<img class="' + (cls || "") + '" src="' + esc(url) + '" alt="' + esc(alt || "") + '" loading="lazy" />';
@@ -44,8 +91,9 @@
       })
       .then(function (data) {
         state.catalog = data;
+        state.metricsUrl = data.metricsUrl || null;
         fillCategoryFilter(data.categories || []);
-        return data;
+        return refreshStats().then(function () { return data; });
       });
   }
 
@@ -120,9 +168,9 @@
     var detail = '<a class="btn btn-ghost ' + cls + '" href="#/oyun/' + g.id + '">İncele</a>';
     if (!a.url) return detail;
     if (a.isExternal) {
-      return '<a class="btn btn-primary ' + cls + '" href="' + esc(a.url) + '" target="_blank" rel="noopener nofollow">🌐 Sayfaya Git</a>' + detail;
+      return '<a class="btn btn-primary ' + cls + '" href="' + esc(a.url) + '" target="_blank" rel="noopener nofollow" data-metric="download:' + g.id + '">🌐 Sayfaya Git</a>' + detail;
     }
-    return '<a class="btn btn-primary ' + cls + '" href="' + esc(a.url) + '" download>⬇ İndir</a>' + detail;
+    return '<a class="btn btn-primary ' + cls + '" href="' + esc(a.url) + '" download data-metric="download:' + g.id + '">⬇ İndir</a>' + detail;
   }
 
   /* ---------- Rendering ---------- */
@@ -149,6 +197,13 @@
     var fileBadge = a.isExternal ? "🌐 Harici" : "";
     var urlLabel = a.isExternal ? "Sayfaya Git" : "İndir";
     var urlIcon = a.isExternal ? "🌐" : "⬇";
+    var statsHtml = "";
+    if (g.stats && (typeof g.stats.views === "number" || typeof g.stats.downloads === "number")) {
+      statsHtml =
+        (typeof g.stats.views === "number" ? '<span class="gcard-views">👁 ' + fmtCount(g.stats.views) + "</span>" : "") +
+        (typeof g.stats.downloads === "number" ? '<span class="gcard-dl">⬇ ' + fmtCount(g.stats.downloads) + "</span>" : "");
+      statsHtml = '<span class="gcard-meta-sep">·</span>' + statsHtml;
+    }
     return (
       '<article class="gcard">' +
         '<a class="gcard-cover" href="#/oyun/' + g.id + '" aria-label="' + esc(g.title) + '">' +
@@ -167,10 +222,11 @@
             '<span class="gcard-size">' + size + "</span>" +
             (version ? '<span class="gcard-ver">v' + esc(version) + "</span>" : "") +
             (fileBadge ? '<span class="gcard-ext">' + fileBadge + "</span>" : "") +
+            statsHtml +
           "</div>" +
           '<div class="gcard-actions">' +
             (a.url
-              ? '<a class="btn btn-primary btn-sm" href="' + esc(a.url) + '" target="_blank" rel="noopener nofollow">' + urlIcon + " " + urlLabel + "</a>"
+              ? '<a class="btn btn-primary btn-sm" href="' + esc(a.url) + '" target="_blank" rel="noopener nofollow" data-metric="download:' + g.id + '">' + urlIcon + " " + urlLabel + "</a>"
               : '<span class="btn btn-ghost btn-sm" style="cursor:default">Yakında</span>') +
             '<a class="btn btn-ghost btn-sm" href="#/oyun/' + g.id + '">İncele</a>' +
           "</div>" +
@@ -211,6 +267,7 @@
 
   function renderGame(id) {
     var el = $("#gameDetail");
+    metric("view", id);
     var g = state.catalog && state.catalog.games.find(function (x) { return Number(x.id) === Number(id); });
     if (!g) {
       el.innerHTML = '<div class="empty">Oyun bulunamadı. <a href="#/katalog" style="color:var(--accent)">Kataloğa dön</a></div>';
@@ -231,10 +288,10 @@
     if (!a.url) {
       actionHtml = '<span class="dim" style="font-size:.9rem;text-align:center">Yakında</span>';
     } else if (a.isExternal) {
-      actionHtml = '<a class="btn btn-primary btn-lg btn-block" href="' + esc(a.url) + '" target="_blank" rel="noopener nofollow">🌐 Sayfaya Git</a>' +
+      actionHtml = '<a class="btn btn-primary btn-lg btn-block" href="' + esc(a.url) + '" target="_blank" rel="noopener nofollow" data-metric="download:' + g.id + '">🌐 Sayfaya Git</a>' +
         '<span class="dim" style="font-size:.82rem;text-align:center">Oyun tarayıcıda açılır; dosyayı oradan indirebilirsin.</span>';
     } else {
-      actionHtml = '<a class="btn btn-primary btn-lg btn-block" href="' + esc(a.url) + '" download>⬇ İndir</a>' +
+      actionHtml = '<a class="btn btn-primary btn-lg btn-block" href="' + esc(a.url) + '" download data-metric="download:' + g.id + '">⬇ İndir</a>' +
         '<span class="dim" style="font-size:.82rem;text-align:center">Dosyayı indir; uygulamada "Oyun Ekle" bölümünden kur.</span>';
     }
     var screens = Array.isArray(g.screenshots) && g.screenshots.length
@@ -249,6 +306,8 @@
       infoRow("Sürüm", version || "—") +
       infoRow("Boyut", fmtBytes(file && file.fileSize)) +
       infoRow("Yayın Tarihi", fmtDate(releaseDate)) +
+      (g.stats && typeof g.stats.views === "number" ? infoRow("Görüntülenme", "👁 " + fmtCount(g.stats.views)) : "") +
+      (g.stats && typeof g.stats.downloads === "number" ? infoRow("İndirme", "⬇ " + fmtCount(g.stats.downloads)) : "") +
       (file && file.fileName ? infoRow("Dosya", file.fileName) : "");
 
     el.innerHTML =
@@ -335,15 +394,27 @@
     applySearch: function (v) {
       state.search = (v || "").trim();
       renderCatalog();
-    }
+    },
+    toggleTheme: toggleTheme
   };
 
   window.addEventListener("hashchange", route);
   document.addEventListener("DOMContentLoaded", function () {
     fetchAppUpdate();
+    applyTheme();
+    var tt = $("#themeToggle");
+    if (tt) tt.addEventListener("click", toggleTheme);
     route();
   });
-  if (document.readyState !== "loading") route();
+  if (document.readyState !== "loading") { applyTheme(); route(); }
+
+  /* Metric delegation: <a data-metric="view|download:id"> */
+  document.addEventListener("click", function (e) {
+    var el = e.target && e.target.closest ? e.target.closest("a[data-metric]") : null;
+    if (!el) return;
+    var parts = el.getAttribute("data-metric").split(":");
+    if (parts[0] === "download") metric("download", parts[1]);
+  });
 
   /* Simple lightbox for screenshots */
   document.addEventListener("click", function (e) {
