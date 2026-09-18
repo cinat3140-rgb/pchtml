@@ -118,14 +118,50 @@
 
     <section data-view="kurulum" hidden>
       <div class="wrap section">
-        <h1 class="page-title">Kurulum Adımları</h1>
-        <p class="page-sub">Çoğu PC oyunu arşiv olarak gelir; kurulum birkaç dakika içinde tamamlanır.</p>
-        <ol class="steps">
-          <li><b>1. İndir</b><p>Oyun sayfasındaki bağlantıdan dosyayı indir; boyutun yüksek olabileceğini unutma.</p></li>
-          <li><b>2. Arşivi çıkar</b><p>İnen .zip/.rar dosyasına sağ tıkla ve "Buraya çıkar" deyip klasöre aç.</p></li>
-          <li><b>3. Doğrula</b><p>İçindeki talimat dosyası varsa oku; gereksinimlerin karşılandığından emin ol.</p></li>
-          <li><b>4. Oyna</b><p>Klasördeki oyun .exe dosyasını çift tıkla ve oynamaya başla.</p></li>
-        </ol>
+        <h1 class="page-title">Kurulum</h1>
+        <p class="page-sub">Tek akış; seçim gerekmez. Adımları sırayla takip et, kurulumu tamamla.</p>
+        <div id="setupWizard">
+          <div class="setup-bar"><div id="setupBarFill" class="setup-bar-fill"></div></div>
+          <div class="sw-steps">
+            <div class="sw-step" id="swStep1">
+              <div class="sw-num">1</div>
+              <div class="sw-body">
+                <div class="sw-title">Dosya hazırlanıyor</div>
+                <p class="sw-sub">Kurulum paketi indiriliyor ve doğrulanıyor.</p>
+              </div>
+              <div class="sw-check">⋯</div>
+            </div>
+            <div class="sw-step" id="swStep2">
+              <div class="sw-num">2</div>
+              <div class="sw-body">
+                <div class="sw-title">Arşiv hazırlanıyor</div>
+                <p class="sw-sub">Arşiv içeriği kontrol ediliyor ve açılışa hazırlanıyor; gereksinimler doğrulanıyor.</p>
+              </div>
+              <div class="sw-check">⋯</div>
+            </div>
+            <div class="sw-step" id="swStep3">
+              <div class="sw-num">3</div>
+              <div class="sw-body">
+                <div class="sw-title">Dosyalar yerleştiriliyor</div>
+                <p class="sw-sub">Eski dosyaların üzerine yazılır, hiçbir şey silinmez; ayarlar korunur.</p>
+              </div>
+              <div class="sw-check">⋯</div>
+            </div>
+            <div class="sw-step" id="swStep4">
+              <div class="sw-num">4</div>
+              <div class="sw-body">
+                <div class="sw-title">Oynamaya hazır</div>
+                <p class="sw-sub">Kurulum tamamlandı. Katalogdan oyunu seç ve tek tıkla başlat.</p>
+              </div>
+              <div class="sw-check">⋯</div>
+            </div>
+          </div>
+          <div class="sw-actions">
+            <button class="btn btn-primary btn-lg" id="setupNext" type="button">Sıradaki →</button>
+            <a class="btn btn-ghost" href="#/katalog">Kataloğa Dön</a>
+          </div>
+          <p class="sw-status dim" id="setupStatus"></p>
+        </div>
       </div>
     </section>
 
